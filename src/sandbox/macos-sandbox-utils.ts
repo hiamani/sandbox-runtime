@@ -56,6 +56,7 @@ export interface MacOSSandboxParams {
   allowUnixSockets?: string[]
   allowAllUnixSockets?: boolean
   allowLocalBinding?: boolean
+  allowLocalPorts?: (number | string)[]
   allowMachLookup?: string[]
   readConfig: FsReadRestrictionConfig | undefined
   writeConfig: FsWriteRestrictionConfig | undefined
@@ -1041,6 +1042,19 @@ function generateWriteRules(
   return rules
 }
 
+function expandPorts(entries: Array<number | string>): number[] {
+  const out = new Set<number>()
+  for (const e of entries) {
+    if (typeof e === 'number') {
+      out.add(e)
+      continue
+    }
+    const [a, b] = e.split('-').map(Number)
+    for (let p = a; p <= b; p++) out.add(p)
+  }
+  return [...out]
+}
+
 /**
  * Generate complete sandbox profile
  */
@@ -1054,6 +1068,7 @@ function generateSandboxProfile({
   allowUnixSockets,
   allowAllUnixSockets,
   allowLocalBinding,
+  allowLocalPorts,
   allowMachLookup,
   allowPty,
   allowGitConfig = false,
@@ -1071,6 +1086,7 @@ function generateSandboxProfile({
   allowUnixSockets?: string[]
   allowAllUnixSockets?: boolean
   allowLocalBinding?: boolean
+  allowLocalPorts?: (number | string)[]
   allowMachLookup?: string[]
   allowPty?: boolean
   allowGitConfig?: boolean
@@ -1111,6 +1127,7 @@ function generateSandboxProfile({
     '  (global-name "com.apple.bsd.dirhelper")',
     '  (global-name "com.apple.securityd.xpc")',
     '  (global-name "com.apple.coreservices.launchservicesd")',
+    '  (global-name "com.apple.FSEvents")',
     ')',
     '',
     ...(enableWeakerNetworkIsolation
@@ -1281,6 +1298,22 @@ function generateSandboxProfile({
       profile.push('(allow network-bind (local ip "*:*"))')
       profile.push('(allow network-inbound (local ip "*:*"))')
       profile.push('(allow network-outbound (remote ip "localhost:*"))')
+    } else if (allowLocalPorts?.length) {
+      const ports = expandPorts(allowLocalPorts)
+      profile.push(
+        '(allow network-outbound',
+        ...ports.map(p => `  (remote ip "localhost:${p}")`),
+        ')',
+      )
+      // only if you need to *listen* on these too:
+      profile.push(
+        '(allow network-bind',
+        ...ports.map(p => `  (local ip "*:${p}")`),
+        ')',
+        '(allow network-inbound',
+        ...ports.map(p => `  (local ip "*:${p}")`),
+        ')',
+      )
     }
     // Unix domain sockets for local IPC (SSH agent, Docker, Gradle, etc.)
     // Three separate operations must be allowed:
@@ -1424,6 +1457,7 @@ export function wrapCommandWithSandboxMacOS(
     allowUnixSockets,
     allowAllUnixSockets,
     allowLocalBinding,
+    allowLocalPorts,
     allowMachLookup,
     readConfig,
     writeConfig,
@@ -1500,6 +1534,7 @@ export function wrapCommandWithSandboxMacOS(
     allowUnixSockets,
     allowAllUnixSockets,
     allowLocalBinding,
+    allowLocalPorts,
     allowMachLookup,
     allowPty,
     allowGitConfig,

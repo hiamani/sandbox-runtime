@@ -740,6 +740,14 @@ export const NetworkConfigSchema = z.object({
         'on localhost becomes reachable, including any local proxy or ' +
         'forwarder that would carry traffic off the machine.',
     ),
+  allowLocalPorts: z
+    .array(
+      z.union([
+        z.number().int().min(1).max(65535),
+        z.string().regex(/^\d+-\d+$/),
+      ]),
+    )
+    .optional(),
   allowMachLookup: z
     .array(
       z.string().refine(

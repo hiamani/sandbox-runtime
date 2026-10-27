@@ -2223,6 +2223,10 @@ function getAllowLocalBinding(): boolean | undefined {
   return config?.network?.allowLocalBinding
 }
 
+function getAllowLocalPorts(): (number | string)[] | undefined {
+  return config?.network?.allowLocalPorts
+}
+
 function getAllowMachLookup(): string[] | undefined {
   return config?.network?.allowMachLookup
 }
@@ -2703,6 +2707,7 @@ async function wrapWithSandboxOnce(
         allowUnixSockets: getAllowUnixSockets(),
         allowAllUnixSockets: getAllowAllUnixSockets(),
         allowLocalBinding: getAllowLocalBinding(),
+        allowLocalPorts: getAllowLocalPorts(),
         allowMachLookup: getAllowMachLookup(),
         ignoreViolations: getIgnoreViolations(),
         allowPty,
